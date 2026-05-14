@@ -1,5 +1,5 @@
 import { doc, writeBatch, serverTimestamp, collection } from 'firebase/firestore';
-import { db } from '@/servicos/firebase';
+import { db, auth } from '@/servicos/firebase';
 import { Habito, Usuario } from '@/tipos/firebase';
 
 /**
@@ -23,37 +23,52 @@ export const onboardingRepositorio = {
     habitos: Partial<Habito>[], 
     configuracoes: Usuario['configuracoes']
   ): Promise<void> {
+    console.log('[Onboarding Repo] Iniciando processo de finalização...');
+    
+    // 1. Validação de Segurança
     if (!uid) throw new Error('UID do usuário não fornecido.');
     
-    console.log('[Batch] 🚀 Verificando instância do Firestore...');
-    if (!db) {
-      console.error('[Batch] Instância "db" está undefined! Verifique src/servicos/firebase.ts');
-      throw new Error('Firestore não inicializado.');
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      console.error('[Onboarding Repo] Erro: Nenhum usuário autenticado no Firebase Auth.');
+      throw new Error('Você precisa estar autenticado para finalizar o onboarding.');
     }
 
-    console.log('[Batch] 📦 Iniciando batch atômico para UID:', uid);
+    if (currentUser.uid !== uid) {
+      console.error(`[Onboarding Repo] Erro de Inconsistência: Auth UID (${currentUser.uid}) != Param UID (${uid})`);
+      throw new Error('Erro de segurança: Identificador de usuário inválido.');
+    }
+
+    if (!db) {
+      console.error('[Onboarding Repo] Firestore não inicializado.');
+      throw new Error('Erro técnico: Banco de dados indisponível.');
+    }
 
     try {
       const batch = writeBatch(db);
-      console.log('[Batch] Instância do writeBatch criada com sucesso.');
+      console.log('[Batch] 📦 Criando batch atômico...');
 
-      // 1. Atualizar perfil do usuário
+      // 2. Atualizar perfil do usuário
+      // PATH: usuarios/{uid}
       const userRef = doc(db, 'usuarios', uid);
+      console.log(`[Batch] -> Preparando write em: ${userRef.path}`);
+      
       const dadosUsuario = limparDados({
         configuracoes,
         onboardingConcluido: true,
-        // @ts-ignore
         atualizadoEm: serverTimestamp(),
       });
       
-      console.log('[Batch] Passo 1: Configurando perfil do usuário...');
       batch.set(userRef, dadosUsuario, { merge: true });
-      console.log('[Batch] Passo 1: OK.');
 
-      // 2. Criar hábitos iniciais
-      console.log('[Batch] Passo 2: Configurando hábitos...');
+      // 3. Criar hábitos iniciais
+      // PATH: usuarios/{uid}/habitos/{randomId}
+      console.log(`[Batch] -> Preparando ${habitos.length} hábitos na subcoleção...`);
+      
       habitos.forEach((habito, index) => {
         const habitoRef = doc(collection(db, 'usuarios', uid, 'habitos'));
+        console.log(`[Batch]    [Hábito ${index + 1}] path: ${habitoRef.path}`);
+        
         const { id, ...dadosBase } = habito;
         
         const dadosHabitoFinal = limparDados({
@@ -62,28 +77,28 @@ export const onboardingRepositorio = {
           status: 'ativo',
           ordem: index,
           frequencia: [0, 1, 2, 3, 4, 5, 6],
-          // @ts-ignore
           criadoEm: serverTimestamp(),
         });
 
-        console.log(`[Batch] Adicionando hábito ${index + 1}: ${habito.titulo}`);
         batch.set(habitoRef, dadosHabitoFinal);
       });
-      console.log('[Batch] Passo 2: OK.');
 
       console.log('[Batch] ⌛ Chamando batch.commit()...');
       
-      // Monitor de tempo para o commit
       const inicio = Date.now();
       await batch.commit();
       const fim = Date.now();
       
-      console.log(`[Batch] ✅ Commit finalizado em ${fim - inicio}ms.`);
+      console.log(`[Batch] ✅ Sucesso! Batch finalizado em ${fim - inicio}ms.`);
     } catch (error: any) {
-      console.error('[Batch] ❌ Erro na finalização:');
-      console.error('Mensagem:', error.message);
+      console.error('[Batch] ❌ Falha crítica no Firestore:');
       console.error('Código:', error.code);
-      console.error('Stack:', error.stack);
+      console.error('Mensagem:', error.message);
+      
+      if (error.code === 'permission-denied') {
+        console.error('DICA: Verifique se as Security Rules permitem escrita em:', `usuarios/${uid}`);
+      }
+      
       throw error;
     }
   }
