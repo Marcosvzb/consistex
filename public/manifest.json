@@ -2,10 +2,12 @@
   "name": "Consistex",
   "short_name": "Consistex",
   "description": "Seu app premium de consistência e hábitos saudáveis",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#F8FAFC",
   "theme_color": "#F8FAFC",
+  "orientation": "portrait",
+  "scope": "/",
   "icons": [
     {
       "src": "/logo-icon.png",

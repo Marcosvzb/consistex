@@ -1,15 +1,20 @@
 import { create } from 'zustand';
+import { obterHojeISO } from '@/utilitarios/data';
 
 interface InterfaceState {
-  dataSelecionada: string; // YYYY-MM-DD
+  dataAtual: string; // YYYY-MM-DD (Sempre hoje)
+  dataSelecionada: string; // YYYY-MM-DD (Navegável)
   setDataSelecionada: (data: string) => void;
+  resetarDataParaHoje: () => void;
   estaOnline: boolean;
   setEstaOnline: (online: boolean) => void;
 }
 
 export const useInterfaceStore = create<InterfaceState>((set) => ({
-  dataSelecionada: new Date().toISOString().split('T')[0], // Hoje por padrão
+  dataAtual: obterHojeISO(),
+  dataSelecionada: obterHojeISO(),
   setDataSelecionada: (dataSelecionada) => set({ dataSelecionada }),
+  resetarDataParaHoje: () => set({ dataSelecionada: obterHojeISO() }),
   estaOnline: typeof window !== 'undefined' ? navigator.onLine : true,
   setEstaOnline: (estaOnline) => set({ estaOnline }),
 }));

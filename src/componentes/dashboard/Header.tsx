@@ -15,7 +15,7 @@ import Image from 'next/image';
 export function Header() {
   const { perfil, estaCarregando } = useAuthStore();
   const { registros } = useHabitoStore();
-  const { dataSelecionada } = useInterfaceStore();
+  const { dataAtual } = useInterfaceStore();
   const { naoLidasCount } = useNotificacoes();
   
   const streakAtual = calcularStreak(registros);
@@ -73,7 +73,7 @@ export function Header() {
             animate={{ opacity: 1, y: 0 }}
             className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-1 opacity-70"
           >
-            {formatarData(dataSelecionada, "EEEE, dd 'de' MMM")}
+            {formatarData(dataAtual, "EEEE, dd 'de' MMM")}
           </motion.p>
           
           <AnimatePresence mode="wait">
