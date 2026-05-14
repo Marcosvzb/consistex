@@ -28,6 +28,7 @@ export function criarPerfilDefault(): Usuario {
       totalConcluidos: 0,
     },
     criadoEm: new Date() as any, // Placeholder para Timestamp
+    atualizadoEm: new Date() as any,
   };
 }
 

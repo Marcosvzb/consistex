@@ -30,7 +30,9 @@ export const usuarioRepositorio = {
    * O Firestore enfileira esta operação se estiver offline.
    */
   async criarPerfilInicial(user: User): Promise<Usuario> {
-    const novoUsuario: Partial<Usuario> = {
+    console.log('[Firestore] Iniciando criação de perfil inicial para:', user.uid);
+    
+    const novoUsuario: any = {
       id: user.uid,
       nome: user.displayName || 'Usuário',
       email: user.email || '',
@@ -52,15 +54,23 @@ export const usuarioRepositorio = {
         melhorStreak: 0,
         totalConcluidos: 0,
       },
-      // @ts-ignore
       criadoEm: serverTimestamp(),
+      atualizadoEm: serverTimestamp(),
     };
 
     try {
-      await setDoc(doc(db, 'usuarios', user.uid), novoUsuario);
+      const docRef = doc(db, 'usuarios', user.uid);
+      await setDoc(docRef, novoUsuario, { merge: true });
+      console.log('[Firestore] Perfil criado com sucesso.');
       return novoUsuario as Usuario;
-    } catch (error) {
-      console.error('[Firestore] Erro ao criar perfil inicial:', error);
+    } catch (error: any) {
+      if (error.code === 'permission-denied') {
+        console.error('[Firestore] Erro de Permissão ao criar perfil. Verifique as Security Rules.');
+      } else {
+        console.error('[Firestore] Erro inesperado ao criar perfil:', error);
+      }
+      // Retornamos o objeto local mesmo em caso de erro de rede ou permissão temporária, 
+      // pois o App precisa do objeto em memória para não crashar a UI.
       return novoUsuario as Usuario;
     }
   },
@@ -76,13 +86,19 @@ export const usuarioRepositorio = {
 
     if (precisaAtualizarNome || precisaAtualizarFoto || precisaAtualizarEmail) {
       console.log('[Firestore] Sincronizando dados do Google Auth para o perfil...');
-      const updates: any = {};
+      const updates: any = {
+        atualizadoEm: serverTimestamp()
+      };
       if (precisaAtualizarNome) updates.nome = authUser.displayName;
       if (precisaAtualizarFoto) updates.fotoUrl = authUser.photoURL;
       if (precisaAtualizarEmail) updates.email = authUser.email;
 
-      const docRef = doc(db, 'usuarios', uid);
-      await setDoc(docRef, updates, { merge: true });
+      try {
+        const docRef = doc(db, 'usuarios', uid);
+        await setDoc(docRef, updates, { merge: true });
+      } catch (error) {
+        console.warn('[Firestore] Falha silenciosa ao sincronizar perfil (provável erro de permissão ou offline).');
+      }
     }
   }
 };

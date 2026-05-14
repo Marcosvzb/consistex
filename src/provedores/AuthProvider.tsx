@@ -55,6 +55,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setPerfil(dados);
                 // Trigger de sync silencioso se os dados estiverem legados/incompletos
                 usuarioRepositorio.syncPerfilComAuth(user.uid, user, dados);
+              } else {
+                // Caso raro: Usuário autenticado mas sem doc no Firestore (ex: falha na criação inicial)
+                console.log('[Auth] Perfil não encontrado no Firestore, tentando criar agora...');
+                usuarioRepositorio.criarPerfilInicial(user).then((novoPerfil) => {
+                  setPerfil(novoPerfil);
+                });
               }
             }).catch(() => {
               // Silencioso: Se falhar (offline), o onSnapshot abaixo assumirá

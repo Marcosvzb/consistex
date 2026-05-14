@@ -26,7 +26,9 @@ export interface Usuario {
     totalConcluidos: number;
   };
   
+  criadaEm?: Timestamp; // Alias para compatibilidade se necessário
   criadoEm: Timestamp;
+  atualizadoEm: Timestamp;
 }
 
 export interface Habito {
