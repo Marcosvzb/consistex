@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/provedores/QueryProvider";
 import { AuthProvider } from "@/provedores/AuthProvider";
+import { HydrationProvider } from "@/provedores/HydrationProvider";
 import { SplashScreen } from "@/componentes/ui/SplashScreen";
 
 const geistSans = Geist({
@@ -21,10 +22,11 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: [
+      { url: "/favicon.ico", sizes: "any" },
       { url: "/favicon.png", sizes: "32x32", type: "image/png" },
       { url: "/logo-icon.png", sizes: "512x512", type: "image/png" },
     ],
-    shortcut: "/favicon.png",
+    shortcut: "/favicon.ico",
     apple: [
       { url: "/logo-icon.png", sizes: "180x180", type: "image/png" },
     ],
@@ -53,14 +55,16 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <SplashScreen />
-        <QueryProvider>
-          <AuthProvider>
-            <main className="min-h-[100dvh] safe-top safe-bottom">
-              {children}
-            </main>
-          </AuthProvider>
-        </QueryProvider>
+        <HydrationProvider>
+          <SplashScreen />
+          <QueryProvider>
+            <AuthProvider>
+              <main className="min-h-[100dvh] safe-top safe-bottom">
+                {children}
+              </main>
+            </AuthProvider>
+          </QueryProvider>
+        </HydrationProvider>
       </body>
     </html>
   );
