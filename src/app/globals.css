@@ -1,26 +1,58 @@
 @import "tailwindcss";
 
+@theme {
+  --color-background: #F8FAFC;
+  --color-foreground: #1E293B; /* Slate-800 */
+  
+  --color-card: #FFFFFF;
+  --color-accent: #10B981; /* Emerald-500 */
+  --color-border: #F1F5F9; /* Slate-100 */
+  --color-slate-800: #1E293B;
+  --color-slate-100: #F1F5F9;
+  --color-emerald-500: #10B981;
+  
+  --radius-2xl: 1rem;
+  
+  --shadow-premium: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #F8FAFC;
+  --foreground: #1E293B;
+  --card: #FFFFFF;
+  --accent: #10B981;
+  --border: #F1F5F9;
+  
+  /* Safe areas for mobile */
+  --sat: env(safe-area-inset-top);
+  --sar: env(safe-area-inset-right);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+input, textarea, select {
+  user-select: text;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  @apply bg-background text-foreground min-h-[100dvh] overflow-x-hidden;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+@layer base {
+  .safe-top {
+    padding-top: var(--sat);
+  }
+  .safe-bottom {
+    padding-bottom: var(--sab);
+  }
+}
+
+.glass {
+  @apply backdrop-blur-md bg-white/70 border border-white/20;
 }
