@@ -34,7 +34,7 @@ export function useEstatisticas() {
   }, [registros]);
 
   const totalHabitosAtivos = useMemo(() => {
-    return habitos.filter(h => h.status === 'active' || h.status === 'ativo').length;
+    return habitos.filter(h => h.status === 'ativo').length;
   }, [habitos]);
 
   const melhorStreak = perfil?.estatisticas?.melhorStreak || 0;

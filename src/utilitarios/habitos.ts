@@ -49,8 +49,8 @@ export function precisaDeMigracao(habito: any): boolean {
   const freqInvalida = habito.frequencia.some((v: any) => typeof v !== 'number' || v < 0 || v > 6);
   if (freqInvalida) return true;
 
-  // Verifica se faltam campos essenciais
-  if (habito.status === undefined) return true;
+  // Verifica se faltam campos essenciais ou se o status é legado
+  if (habito.status === undefined || habito.status === 'active' || habito.status === 'archived') return true;
   if (habito.ordem === undefined) return true;
 
   return false;
@@ -65,7 +65,7 @@ export function normalizarHabito(habito: any): Habito {
     id: habito.id || '',
     titulo: habito.titulo || 'Hábito sem título',
     descricao: habito.descricao || '',
-    status: (habito.status === 'arquivado') ? 'arquivado' : 'ativo',
+    status: (habito.status === 'arquivado' || habito.status === 'archived') ? 'arquivado' : 'ativo',
     ordem: typeof habito.ordem === 'number' ? habito.ordem : 0,
     cor: habito.cor || 'bg-emerald-500',
     icone: habito.icone || 'heart',
