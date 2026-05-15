@@ -3,10 +3,36 @@
 import { useEstatisticas } from '@/ganchos/useEstatisticas';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/store/useAuthStore';
+import { memo, useEffect, useState } from 'react';
 
-export function ResumoCards() {
-  const { consistenciaMensal, totalHabitosAtivos, streakAtual } = useEstatisticas();
-  const { estaCarregando } = useAuthStore();
+interface ResumoCardsProps {
+  dados: ReturnType<typeof useEstatisticas>;
+}
+
+export const ResumoCards = memo(({ dados }: ResumoCardsProps) => {
+  const { consistenciaMensal, totalHabitosAtivos, streakAtual } = dados;
+  const estaCarregando = useAuthStore(s => s.estaCarregando);
+  const [mounted, setMounted] = useState(false);
+
+  console.log('[Chart] ResumoCards render');
+
+  useEffect(() => {
+    setMounted(true);
+    console.log('[Chart] ResumoCards montado');
+    return () => console.log('[Chart] ResumoCards desmontado');
+  }, []);
+
+  if (!mounted) {
+    return (
+      <section className="grid grid-cols-2 gap-4 h-[160px] animate-pulse">
+        <div className="bg-slate-900/10 rounded-[2.5rem]" />
+        <div className="flex flex-col gap-4">
+          <div className="bg-slate-100 rounded-[2rem] flex-1" />
+          <div className="bg-slate-100 rounded-[2rem] flex-1" />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="grid grid-cols-2 gap-4">
@@ -64,4 +90,6 @@ export function ResumoCards() {
       </div>
     </section>
   );
-}
+});
+
+ResumoCards.displayName = 'ResumoCards';

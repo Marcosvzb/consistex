@@ -3,26 +3,41 @@
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, YAxis } from 'recharts';
 import { useEstatisticas } from '@/ganchos/useEstatisticas';
 import { motion } from 'framer-motion';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, memo } from 'react';
 
-export function GraficoEvolucao() {
-  const { evolucaoSemanal } = useEstatisticas();
+const X_AXIS_TICK = { fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' };
+const Y_AXIS_TICK = { fill: '#cbd5e1', fontSize: 10 };
+const TOOLTIP_CURSOR = { stroke: '#f1f5f9', strokeWidth: 2, strokeDasharray: '4 4' };
+const CHART_MARGIN = { top: 10, right: 0, left: -20, bottom: 0 };
+const AREA_GRADIENT_STOP_1 = { stopColor: "#10b981", stopOpacity: 0.3 };
+const AREA_GRADIENT_STOP_2 = { stopColor: "#10b981", stopOpacity: 0 };
+
+interface GraficoEvolucaoProps {
+  dados: ReturnType<typeof useEstatisticas>;
+}
+
+export const GraficoEvolucao = memo(({ dados }: GraficoEvolucaoProps) => {
+  const { evolucaoSemanal } = dados;
   const [mounted, setMounted] = useState(false);
+
+  console.log('[Chart] GraficoEvolucao render');
 
   useEffect(() => {
     setMounted(true);
     console.log('[Chart] GraficoEvolucao montado');
+    return () => console.log('[Chart] GraficoEvolucao desmontado');
   }, []);
 
-  // Inverter para mostrar da esquerda (mais antigo) para direita (mais recente)
   const data = useMemo(() => {
     console.log('[Chart] Recalculando dados GraficoEvolucao');
     return [...evolucaoSemanal].reverse();
   }, [evolucaoSemanal]);
 
+  const tickFormatter = useMemo(() => (val: number) => `${val}%`, []);
+
   if (!mounted) {
     return (
-      <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm h-[312px] animate-pulse" />
+      <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm h-[320px] min-h-[320px] animate-pulse" />
     );
   }
 
@@ -37,31 +52,31 @@ export function GraficoEvolucao() {
         <p className="text-xl font-black text-slate-800">Evolução Semanal</p>
       </div>
 
-      <div className="h-48 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+      <div className="w-full h-[200px] min-h-[200px]">
+        <ResponsiveContainer width="100%" height={200} minWidth={300} minHeight={200}>
+          <AreaChart data={data} margin={CHART_MARGIN}>
             <defs>
               <linearGradient id="colorPorcentagem" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                <stop offset="5%" {...AREA_GRADIENT_STOP_1} />
+                <stop offset="95%" {...AREA_GRADIENT_STOP_2} />
               </linearGradient>
             </defs>
             <XAxis 
               dataKey="dia" 
               axisLine={false} 
               tickLine={false} 
-              tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }}
+              tick={X_AXIS_TICK}
               dy={10}
             />
             <YAxis 
               axisLine={false} 
               tickLine={false} 
-              tick={{ fill: '#cbd5e1', fontSize: 10 }}
+              tick={Y_AXIS_TICK}
               domain={[0, 100]}
-              tickFormatter={(val) => `${val}%`}
+              tickFormatter={tickFormatter}
             />
             <Tooltip 
-              cursor={{ stroke: '#f1f5f9', strokeWidth: 2, strokeDasharray: '4 4' }}
+              cursor={TOOLTIP_CURSOR}
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
                   return (
@@ -92,4 +107,6 @@ export function GraficoEvolucao() {
       </div>
     </motion.div>
   );
-}
+});
+
+GraficoEvolucao.displayName = 'GraficoEvolucao';

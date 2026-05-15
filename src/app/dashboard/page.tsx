@@ -12,10 +12,11 @@ import { NudgeDiario } from '@/componentes/notificacoes/NudgeDiario';
 import { useInterfaceStore } from '@/store/useInterfaceStore';
 
 export default function DashboardPage() {
+  console.log('[Dashboard] render');
   // Inicializa o sync offline-first do Firestore
   useRealtimeHabitos();
   
-  const { resetarDataParaHoje } = useInterfaceStore();
+  const resetarDataParaHoje = useInterfaceStore(s => s.resetarDataParaHoje);
 
   // Resetar para hoje ao abrir o dashboard
   useEffect(() => {

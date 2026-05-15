@@ -4,14 +4,36 @@ import { useEstatisticas } from '@/ganchos/useEstatisticas';
 import { OBTER_ICONE } from '@/constantes/icones';
 import { motion } from 'framer-motion';
 import { cn } from '@/utilitarios/ui';
+import { memo, useEffect, useState, useMemo } from 'react';
 
-export function RankingHabitos() {
-  const { rankingHabitos } = useEstatisticas();
+interface RankingHabitosProps {
+  dados: ReturnType<typeof useEstatisticas>;
+}
 
-  if (rankingHabitos.length === 0) return null;
+export const RankingHabitos = memo(({ dados }: RankingHabitosProps) => {
+  const { rankingHabitos } = dados;
+  const [mounted, setMounted] = useState(false);
 
-  // Pegamos os top 4
-  const topHabitos = rankingHabitos.slice(0, 4);
+  console.log('[Chart] RankingHabitos render');
+
+  useEffect(() => {
+    setMounted(true);
+    console.log('[Chart] RankingHabitos montado');
+    return () => console.log('[Chart] RankingHabitos desmontado');
+  }, []);
+
+  const topHabitos = useMemo(() => {
+    if (rankingHabitos.length === 0) return [];
+    return rankingHabitos.slice(0, 4);
+  }, [rankingHabitos]);
+
+  if (!mounted) {
+    return (
+      <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm h-[300px] animate-pulse" />
+    );
+  }
+
+  if (topHabitos.length === 0) return null;
 
   return (
     <motion.div 
@@ -62,4 +84,6 @@ export function RankingHabitos() {
       </div>
     </motion.div>
   );
-}
+});
+
+RankingHabitos.displayName = 'RankingHabitos';

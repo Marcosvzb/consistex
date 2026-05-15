@@ -1,5 +1,5 @@
 import { useHabitoStore } from '@/store/useHabitoStore';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import { 
   calcularConsistenciaMensal, 
   calcularEvolucaoUltimos7Dias, 
@@ -7,12 +7,44 @@ import {
   calcularPerformancePorDiaSemana 
 } from '@/utilitarios/estatisticas';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useShallow } from 'zustand/react/shallow';
 
 export function useEstatisticas() {
-  const { registros, habitos } = useHabitoStore();
-  const { perfil } = useAuthStore();
+  // Uso de useShallow para garantir que o hook só re-execute se o conteúdo mudar, não a referência do objeto retornado pelo seletor
+  const { registros, habitos } = useHabitoStore(
+    useShallow((s) => ({
+      registros: s.registros,
+      habitos: s.habitos,
+    }))
+  );
 
-  // Memoização granular para evitar recalculação se apenas um mudar
+  const { melhorStreak, streakAtual } = useAuthStore(
+    useShallow((s) => ({
+      melhorStreak: s.perfil?.estatisticas?.melhorStreak || 0,
+      streakAtual: s.perfil?.estatisticas?.streakAtual || 0,
+    }))
+  );
+
+  // DEBUG DE REFERÊNCIAS
+  const prevRefs = useRef({ registros, habitos });
+  useEffect(() => {
+    const regMudou = prevRefs.current.registros !== registros;
+    const habMudou = prevRefs.current.habitos !== habitos;
+    
+    if (regMudou || habMudou) {
+      console.log('[Stats Compare]', {
+        registrosMudou: regMudou,
+        habitosMudou: habMudou,
+        registrosKeys: Object.keys(registros).length,
+        habitosCount: habitos.length
+      });
+    }
+    prevRefs.current = { registros, habitos };
+  });
+
+  console.log('[Stats] Hook useEstatisticas executado');
+
+  // Cálculos memorizados individualmente com dependências granulares
   const consistenciaMensal = useMemo(() => {
     console.log('[Stats] Recalculando consistenciaMensal');
     return calcularConsistenciaMensal(registros);
@@ -34,13 +66,12 @@ export function useEstatisticas() {
   }, [registros]);
 
   const totalHabitosAtivos = useMemo(() => {
+    console.log('[Stats] Recalculando totalHabitosAtivos');
     return habitos.filter(h => h.status === 'ativo').length;
   }, [habitos]);
 
-  const melhorStreak = perfil?.estatisticas?.melhorStreak || 0;
-  const streakAtual = perfil?.estatisticas?.streakAtual || 0;
-
-  return {
+  // Retorno memorizado para evitar que componentes consumidores re-renderizem se os valores não mudarem
+  return useMemo(() => ({
     consistenciaMensal,
     evolucaoSemanal,
     rankingHabitos,
@@ -48,5 +79,13 @@ export function useEstatisticas() {
     melhorStreak,
     streakAtual,
     totalHabitosAtivos
-  };
+  }), [
+    consistenciaMensal,
+    evolucaoSemanal,
+    rankingHabitos,
+    performanceDia,
+    melhorStreak,
+    streakAtual,
+    totalHabitosAtivos
+  ]);
 }

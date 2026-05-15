@@ -6,8 +6,12 @@ import { GraficoEvolucao } from '@/componentes/estatisticas/GraficoEvolucao';
 import { GraficoPerformance } from '@/componentes/estatisticas/GraficoPerformance';
 import { RankingHabitos } from '@/componentes/estatisticas/RankingHabitos';
 import { ListaInsights } from '@/componentes/estatisticas/ListaInsights';
+import { useEstatisticas } from '@/ganchos/useEstatisticas';
 
 export default function EstatisticasPage() {
+  console.log('[Estatisticas] render');
+  const estatisticas = useEstatisticas();
+
   return (
     <ShellMobile>
       <header className="mb-8 px-2">
@@ -16,11 +20,11 @@ export default function EstatisticasPage() {
       </header>
 
       <div className="space-y-6 pb-12">
-        <ResumoCards />
-        <GraficoEvolucao />
+        <ResumoCards dados={estatisticas} />
+        <GraficoEvolucao dados={estatisticas} />
         <ListaInsights />
-        <GraficoPerformance />
-        <RankingHabitos />
+        <GraficoPerformance dados={estatisticas} />
+        <RankingHabitos dados={estatisticas} />
       </div>
     </ShellMobile>
   );

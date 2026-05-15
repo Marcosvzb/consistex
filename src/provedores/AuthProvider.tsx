@@ -70,12 +70,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return;
           }
 
-          console.log('[Auth] Iniciando busca perfil');
+          console.log(`[Firestore] getDoc perfil (AuthProvider) iniciado (${user.uid})`);
           try {
             const docRef = doc(db, 'usuarios', user.uid);
             
             // Leitura ÚNICA para economizar quota
             const snap = await getDoc(docRef);
+            console.log(`[Firestore] getDoc perfil (AuthProvider) concluído (${user.uid})`);
 
             if (snap.exists()) {
               const dados = snap.data() as Usuario;
@@ -94,6 +95,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setPerfil(novoPerfil);
             }
           } catch (error: any) {
+            console.error(`[Firestore] getDoc perfil (AuthProvider) erro (${user.uid}):`, {
+              code: error.code,
+              message: error.message,
+              stack: error.stack
+            });
             if (error.code === 'resource-exhausted') {
               console.error('[Auth] ERRO CRÍTICO: Quota do Firestore esgotada.');
             } else {

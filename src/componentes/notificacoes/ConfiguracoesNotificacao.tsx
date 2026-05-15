@@ -57,13 +57,20 @@ export function ConfiguracoesNotificacao({ open, onOpenChange }: ConfiguracoesNo
         horarioLembrete: horario,
       };
 
+      console.log(`[Firestore] updateDoc configuracoes iniciado (${perfil.id})`);
       const docRef = doc(db, 'usuarios', perfil.id);
       await updateDoc(docRef, { configuracoes: novasConfigs });
+      console.log(`[Firestore] updateDoc configuracoes concluído (${perfil.id})`);
       
       // Update local store
       setPerfil({ ...perfil, configuracoes: novasConfigs });
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
+      console.error(`[Firestore] updateDoc configuracoes erro (${perfil?.id}):`, {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      });
       console.error("Erro ao salvar configurações", error);
     } finally {
       setSalvando(false);

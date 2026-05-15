@@ -10,17 +10,23 @@ export const usuarioRepositorio = {
    * confiando que o onSnapshot do AuthProvider resolverá o estado assim que possível.
    */
   async obterPerfil(uid: string): Promise<Usuario | null> {
+    console.log(`[Firestore] getDoc perfil iniciado (${uid})`);
     try {
       const docRef = doc(db, 'usuarios', uid);
       const docSnap = await getDoc(docRef);
+      console.log(`[Firestore] getDoc perfil concluído (${uid})`);
       return docSnap.exists() ? (docSnap.data() as Usuario) : null;
     } catch (error: any) {
+      console.error(`[Firestore] getDoc perfil erro (${uid}):`, {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      });
       // Se o erro for de offline, não travamos o fluxo
       if (error.code === 'unavailable' || !navigator.onLine) {
         console.warn('[Firestore] Servidor inacessível. Perfil será carregado via cache/snapshot.');
         return null;
       }
-      console.error('[Firestore] Erro ao obter perfil:', error);
       return null;
     }
   },
@@ -30,7 +36,7 @@ export const usuarioRepositorio = {
    * O Firestore enfileira esta operação se estiver offline.
    */
   async criarPerfilInicial(user: User): Promise<Usuario> {
-    console.log('[Firestore] Iniciando criação de perfil inicial para:', user.uid);
+    console.log('[Firestore] setDoc perfil inicial iniciado:', user.uid);
     
     const novoUsuario: any = {
       id: user.uid,
@@ -61,13 +67,16 @@ export const usuarioRepositorio = {
     try {
       const docRef = doc(db, 'usuarios', user.uid);
       await setDoc(docRef, novoUsuario, { merge: true });
-      console.log('[Firestore] Perfil criado com sucesso.');
+      console.log('[Firestore] setDoc perfil inicial concluído:', user.uid);
       return novoUsuario as Usuario;
     } catch (error: any) {
+      console.error(`[Firestore] setDoc perfil inicial erro (${user.uid}):`, {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      });
       if (error.code === 'permission-denied') {
         console.error('[Firestore] Erro de Permissão ao criar perfil. Verifique as Security Rules.');
-      } else {
-        console.error('[Firestore] Erro inesperado ao criar perfil:', error);
       }
       // Retornamos o objeto local mesmo em caso de erro de rede ou permissão temporária, 
       // pois o App precisa do objeto em memória para não crashar a UI.
@@ -93,7 +102,7 @@ export const usuarioRepositorio = {
                                  perfilAtual.email !== authUser.email;
 
     if (precisaAtualizarNome || precisaAtualizarFoto || precisaAtualizarEmail) {
-      console.log('[Firestore] Sincronizando dados do Google Auth para o perfil...');
+      console.log(`[Firestore] setDoc syncPerfilComAuth iniciado (${uid})`);
       const updates: any = {
         atualizadoEm: serverTimestamp()
       };
@@ -104,7 +113,13 @@ export const usuarioRepositorio = {
       try {
         const docRef = doc(db, 'usuarios', uid);
         await setDoc(docRef, updates, { merge: true });
-      } catch (error) {
+        console.log(`[Firestore] setDoc syncPerfilComAuth concluído (${uid})`);
+      } catch (error: any) {
+        console.error(`[Firestore] setDoc syncPerfilComAuth erro (${uid}):`, {
+          code: error.code,
+          message: error.message,
+          stack: error.stack
+        });
         console.warn('[Firestore] Falha silenciosa ao sincronizar perfil (provável erro de permissão ou offline).');
       }
     }

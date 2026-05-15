@@ -13,6 +13,18 @@ import { calcularStreakAteData } from '@/utilitarios/data';
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
+const ANIMATION_VARIANTS = {
+  initial: { opacity: 0, scale: 0.98, filter: 'blur(4px)' },
+  animate: { opacity: 1, scale: 1, filter: 'blur(0px)' },
+  exit: { opacity: 0, scale: 1.02, filter: 'blur(4px)' }
+};
+
+const TOOLTIP_VARIANTS = {
+  initial: { opacity: 0, y: 20, scale: 0.95 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: 10, scale: 0.95 }
+};
+
 // Componente de Dia memorizado para evitar rerenders da grade inteira
 const DiaHeatmap = React.memo(({ 
   dia, 
@@ -32,12 +44,18 @@ const DiaHeatmap = React.memo(({
   const iso = useMemo(() => format(dia, 'yyyy-MM-dd'), [dia]);
   const corClass = useMemo(() => obterCorIntensidade(porcentagem, isMesAtual), [porcentagem, isMesAtual]);
 
+  const handleClick = useCallback(() => {
+    if (isMesAtual) onSelect(iso);
+  }, [isMesAtual, onSelect, iso]);
+
+  const diaFormatado = useMemo(() => format(dia, 'd'), [dia]);
+
   return (
     <div className="relative aspect-square">
       <motion.button
         whileHover={isMesAtual ? { scale: 1.05, zIndex: 20 } : {}}
         whileTap={isMesAtual ? { scale: 0.9 } : {}}
-        onClick={() => isMesAtual && onSelect(iso)}
+        onClick={handleClick}
         className={cn(
           "w-full h-full rounded-xl flex items-center justify-center text-[11px] font-bold transition-all duration-300",
           corClass,
@@ -45,7 +63,7 @@ const DiaHeatmap = React.memo(({
           !isMesAtual && "cursor-default"
         )}
       >
-        {format(dia, 'd')}
+        {diaFormatado}
         
         {hoje && isMesAtual && (
           <div className={cn(
@@ -60,16 +78,19 @@ const DiaHeatmap = React.memo(({
 
 DiaHeatmap.displayName = 'DiaHeatmap';
 
-export function HeatmapMensal() {
+export const HeatmapMensal = React.memo(() => {
   const { registros, habitos } = useHabitoStore();
   const [mesReferencia, setMesReferencia] = useState(new Date());
   const [diaSelecionado, setDiaSelecionado] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  console.log('[Chart] HeatmapMensal render');
+
   useEffect(() => {
     setMounted(true);
     console.log('[Chart] HeatmapMensal montado');
+    return () => console.log('[Chart] HeatmapMensal desmontado');
   }, []);
 
   const grade = useMemo(() => {
@@ -95,23 +116,29 @@ export function HeatmapMensal() {
     setDiaSelecionado(prev => prev === iso ? null : iso);
   }, []);
 
+  const habitosLength = habitos.length;
   const dadosDiaSelecionado = useMemo(() => {
     if (!diaSelecionado) return null;
     const registro = registros[diaSelecionado];
     const streak = calcularStreakAteData(registros, diaSelecionado);
-    const totalHabitos = habitos.length;
     const concluidos = registro ? Object.values(registro.habitos).filter(Boolean).length : 0;
     
     return {
       data: parseISO(diaSelecionado),
       porcentagem: registro?.porcentagemConclusao || 0,
       concluidos,
-      total: totalHabitos,
+      total: habitosLength,
       streak
     };
-  }, [diaSelecionado, registros, habitos.length]);
+  }, [diaSelecionado, registros, habitosLength]);
 
-  if (!mounted) return null;
+  if (!mounted) {
+    return (
+      <div className="px-4 mb-12">
+        <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] border border-slate-100 shadow-xl h-[400px] animate-pulse" />
+      </div>
+    );
+  }
 
   return (
     <section className="px-4 mb-12">
@@ -170,9 +197,7 @@ export function HeatmapMensal() {
           <AnimatePresence mode="wait">
             <motion.div 
               key={mesReferencia.toISOString()}
-              initial={{ opacity: 0, scale: 0.98, filter: 'blur(4px)' }}
-              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, scale: 1.02, filter: 'blur(4px)' }}
+              {...ANIMATION_VARIANTS}
               transition={{ duration: 0.3, ease: "circOut" }}
               className={cn(
                 "grid grid-cols-7 gap-2 transition-opacity duration-300",
@@ -206,9 +231,7 @@ export function HeatmapMensal() {
           <AnimatePresence>
             {diaSelecionado && dadosDiaSelecionado && (
               <motion.div
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                {...TOOLTIP_VARIANTS}
                 className="mt-8 relative z-20"
               >
                 <div className="bg-slate-900 rounded-[2rem] p-6 text-white shadow-2xl shadow-slate-900/30 overflow-hidden relative">
@@ -293,4 +316,6 @@ export function HeatmapMensal() {
       </div>
     </section>
   );
-}
+});
+
+HeatmapMensal.displayName = 'HeatmapMensal';

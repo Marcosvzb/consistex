@@ -83,17 +83,19 @@ export const onboardingRepositorio = {
         batch.set(habitoRef, dadosHabitoFinal);
       });
 
-      console.log('[Batch] ⌛ Chamando batch.commit()...');
+      console.log(`[Firestore] batch onboarding iniciado (UID: ${uid}, Habitos: ${habitos.length})`);
       
       const inicio = Date.now();
       await batch.commit();
       const fim = Date.now();
       
-      console.log(`[Batch] ✅ Sucesso! Batch finalizado em ${fim - inicio}ms.`);
+      console.log(`[Firestore] batch onboarding concluído (${fim - inicio}ms)`);
     } catch (error: any) {
-      console.error('[Batch] ❌ Falha crítica no Firestore:');
-      console.error('Código:', error.code);
-      console.error('Mensagem:', error.message);
+      console.error(`[Firestore] batch onboarding erro (${uid}):`, {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      });
       
       if (error.code === 'permission-denied') {
         console.error('DICA: Verifique se as Security Rules permitem escrita em:', `usuarios/${uid}`);

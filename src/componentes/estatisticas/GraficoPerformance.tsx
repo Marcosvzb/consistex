@@ -3,29 +3,41 @@
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useEstatisticas } from '@/ganchos/useEstatisticas';
 import { motion } from 'framer-motion';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, memo, useCallback } from 'react';
 
-export function GraficoPerformance() {
-  const { performanceDia } = useEstatisticas();
+const X_AXIS_TICK = { fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' };
+const TOOLTIP_CURSOR = { fill: '#f8fafc', radius: 8 };
+const BAR_RADIUS: [number, number, number, number] = [8, 8, 8, 8];
+const CHART_MARGIN = { top: 0, right: 0, left: 0, bottom: 0 };
+
+interface GraficoPerformanceProps {
+  dados: ReturnType<typeof useEstatisticas>;
+}
+
+export const GraficoPerformance = memo(({ dados }: GraficoPerformanceProps) => {
+  const { performanceDia } = dados;
   const [mounted, setMounted] = useState(false);
+
+  console.log('[Chart] GraficoPerformance render');
 
   useEffect(() => {
     setMounted(true);
     console.log('[Chart] GraficoPerformance montado');
+    return () => console.log('[Chart] GraficoPerformance desmontado');
   }, []);
   
-  // O hook retorna ordenado por performance, precisamos voltar para ordem cronológica (D a S) para o gráfico
   const data = useMemo(() => {
     console.log('[Chart] Recalculando dados GraficoPerformance');
     return [...performanceDia].sort((a, b) => a.diaSemana - b.diaSemana);
   }, [performanceDia]);
   
-  // Encontrar o valor máximo para dar destaque
   const maxMedia = useMemo(() => Math.max(...data.map(d => d.media)), [data]);
+
+  const tickFormatter = useCallback((val: string) => val.charAt(0).toUpperCase(), []);
 
   if (!mounted) {
     return (
-      <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm h-[280px] animate-pulse" />
+      <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm h-[280px] min-h-[280px] animate-pulse" />
     );
   }
 
@@ -41,19 +53,19 @@ export function GraficoPerformance() {
         <p className="text-xl font-black text-slate-800">Performance por Dia</p>
       </div>
 
-      <div className="h-40 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+      <div className="w-full h-40 min-h-[160px]">
+        <ResponsiveContainer width="100%" height={160} minWidth={300} minHeight={160}>
+          <BarChart data={data} margin={CHART_MARGIN}>
             <XAxis 
               dataKey="nome" 
               axisLine={false} 
               tickLine={false} 
-              tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }}
-              tickFormatter={(val) => val.charAt(0).toUpperCase()} // Mostra só a primeira letra
+              tick={X_AXIS_TICK}
+              tickFormatter={tickFormatter}
               dy={10}
             />
             <Tooltip 
-              cursor={{ fill: '#f8fafc', radius: 8 }}
+              cursor={TOOLTIP_CURSOR}
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
                   return (
@@ -70,7 +82,7 @@ export function GraficoPerformance() {
                 return null;
               }}
             />
-            <Bar dataKey="media" radius={[8, 8, 8, 8]} animationDuration={1500}>
+            <Bar dataKey="media" radius={BAR_RADIUS} animationDuration={1500}>
               {data.map((entry, index) => (
                 <Cell 
                   key={`cell-${index}`} 
@@ -83,4 +95,6 @@ export function GraficoPerformance() {
       </div>
     </motion.div>
   );
-}
+});
+
+GraficoPerformance.displayName = 'GraficoPerformance';
