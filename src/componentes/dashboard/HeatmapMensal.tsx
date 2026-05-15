@@ -10,6 +10,7 @@ import { cn } from '@/utilitarios/ui';
 import { useHabitoStore } from '@/store/useHabitoStore';
 import { gerarGradeMensal, obterCorIntensidade, pertenceAoMes } from '@/utilitarios/heatmap';
 import { calcularStreakAteData } from '@/utilitarios/data';
+import { normalizarFrequencia } from '@/utilitarios/habitos';
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -93,10 +94,34 @@ export const HeatmapMensal = React.memo(() => {
     return () => console.log('[Chart] HeatmapMensal desmontado');
   }, []);
 
+  const habitosAtivos = useMemo(() => habitos.filter(h => h.status === 'ativo'), [habitos]);
+
   const grade = useMemo(() => {
     console.log('[Chart] Gerando grade HeatmapMensal');
     return gerarGradeMensal(mesReferencia);
   }, [mesReferencia]);
+
+  // Recalcula registros para o heatmap ignorando arquivados
+  const registrosFiltrados = useMemo(() => {
+    const novos: typeof registros = {};
+    Object.entries(registros).forEach(([data, reg]) => {
+      const d = parseISO(data);
+      const diaSemana = d.getDay();
+      const obrigatorios = habitosAtivos.filter(h => normalizarFrequencia(h.frequencia).includes(diaSemana));
+      
+      if (obrigatorios.length === 0) {
+        novos[data] = { ...reg, porcentagemConclusao: 0 };
+        return;
+      }
+
+      const concluidos = obrigatorios.filter(h => reg.habitos[h.id]).length;
+      novos[data] = {
+        ...reg,
+        porcentagemConclusao: Math.round((concluidos / obrigatorios.length) * 100)
+      };
+    });
+    return novos;
+  }, [registros, habitosAtivos]);
 
   const navegarMes = useCallback((direcao: 'anterior' | 'proximo' | 'hoje') => {
     setIsNavigating(true);
@@ -116,21 +141,24 @@ export const HeatmapMensal = React.memo(() => {
     setDiaSelecionado(prev => prev === iso ? null : iso);
   }, []);
 
-  const habitosLength = habitos.length;
   const dadosDiaSelecionado = useMemo(() => {
     if (!diaSelecionado) return null;
-    const registro = registros[diaSelecionado];
-    const streak = calcularStreakAteData(registros, diaSelecionado);
-    const concluidos = registro ? Object.values(registro.habitos).filter(Boolean).length : 0;
+    const registro = registrosFiltrados[diaSelecionado];
+    const streak = calcularStreakAteData(registrosFiltrados, diaSelecionado);
+    
+    const d = parseISO(diaSelecionado);
+    const diaSemana = d.getDay();
+    const obrigatorios = habitosAtivos.filter(h => normalizarFrequencia(h.frequencia).includes(diaSemana));
+    const concluidos = registro ? obrigatorios.filter(h => registro.habitos[h.id]).length : 0;
     
     return {
-      data: parseISO(diaSelecionado),
+      data: d,
       porcentagem: registro?.porcentagemConclusao || 0,
       concluidos,
-      total: habitosLength,
+      total: obrigatorios.length,
       streak
     };
-  }, [diaSelecionado, registros, habitosLength]);
+  }, [diaSelecionado, registrosFiltrados, habitosAtivos]);
 
   if (!mounted) {
     return (
@@ -207,7 +235,7 @@ export const HeatmapMensal = React.memo(() => {
               {grade.map((dia) => {
                 const iso = format(dia, 'yyyy-MM-dd');
                 const isMesAtual = pertenceAoMes(dia, mesReferencia);
-                const registro = registros[iso];
+                const registro = registrosFiltrados[iso];
                 const porcentagem = registro?.porcentagemConclusao || 0;
                 const selecionado = diaSelecionado === iso;
                 const hoje = isToday(dia);

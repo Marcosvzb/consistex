@@ -27,6 +27,9 @@ export function useHabitosDia() {
       const totalHabitos = habitosDoDia.length;
       const concluidos = habitosDoDia.filter(h => registroDia?.habitos?.[h.id]).length;
       const porcentagem = totalHabitos > 0 ? Math.round((concluidos / totalHabitos) * 100) : 0;
+      const arquivados = habitos.filter(h => h.status === 'arquivado').length;
+
+      console.log(`[Metricas] ativos:${totalHabitos} concluidos:${concluidos} arquivados:${arquivados} percentual:${porcentagem}%`);
 
       return {
         habitos: habitosDoDia,
