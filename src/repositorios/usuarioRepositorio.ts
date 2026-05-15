@@ -80,9 +80,17 @@ export const usuarioRepositorio = {
    * Corrige "Usuário" genérico ou falta de foto.
    */
   async syncPerfilComAuth(uid: string, authUser: User, perfilAtual: Usuario): Promise<void> {
-    const precisaAtualizarNome = (!perfilAtual.nome || perfilAtual.nome === 'Usuário') && authUser.displayName;
-    const precisaAtualizarFoto = !perfilAtual.fotoUrl && authUser.photoURL;
-    const precisaAtualizarEmail = !perfilAtual.email && authUser.email;
+    const precisaAtualizarNome = authUser.displayName && 
+                                (!perfilAtual.nome || perfilAtual.nome === 'Usuário') && 
+                                perfilAtual.nome !== authUser.displayName;
+    
+    const precisaAtualizarFoto = authUser.photoURL && 
+                                !perfilAtual.fotoUrl && 
+                                perfilAtual.fotoUrl !== authUser.photoURL;
+    
+    const precisaAtualizarEmail = authUser.email && 
+                                 !perfilAtual.email && 
+                                 perfilAtual.email !== authUser.email;
 
     if (precisaAtualizarNome || precisaAtualizarFoto || precisaAtualizarEmail) {
       console.log('[Firestore] Sincronizando dados do Google Auth para o perfil...');

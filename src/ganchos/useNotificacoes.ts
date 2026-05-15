@@ -1,28 +1,10 @@
-import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { notificacoesRepositorio } from '@/repositorios/notificacoes-repositorio';
+import { useNotificacaoStore } from '@/store/useNotificacaoStore';
 import { notificacoesService } from '@/servicos/notificacoes-service';
-import { NotificacaoApp } from '@/tipos/notificacoes';
 
 export function useNotificacoes() {
   const { usuario } = useAuthStore();
-  const [notificacoes, setNotificacoes] = useState<NotificacaoApp[]>([]);
-  const [estaCarregando, setEstaCarregando] = useState(true);
-
-  useEffect(() => {
-    if (!usuario) {
-      setNotificacoes([]);
-      setEstaCarregando(false);
-      return;
-    }
-
-    const unsub = notificacoesRepositorio.ouvirNotificacoes(usuario.uid, (dados) => {
-      setNotificacoes(dados);
-      setEstaCarregando(false);
-    });
-
-    return () => unsub();
-  }, [usuario]);
+  const { notificacoes, estaCarregando } = useNotificacaoStore();
 
   const notificacoesNaoLidas = notificacoes.filter(n => !n.lida);
 

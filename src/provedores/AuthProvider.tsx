@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/servicos/firebase';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useInterfaceStore } from '@/store/useInterfaceStore';
@@ -12,17 +12,28 @@ import { usuarioRepositorio } from '@/repositorios/usuarioRepositorio';
 /**
  * AUTH PROVIDER
  * 
- * Gerencia o ciclo de vida da autenticação global e sincronização do perfil.
- * Resiliência: Finaliza o carregamento assim que o Auth é resolvido, permitindo 
- * que o Firestore sincronize o perfil em background (cache ou rede).
+ * Gerencia o ciclo de vida da autenticação global e carregamento do perfil.
+ * Blindado contra loops de renderização e excesso de leituras no Firestore.
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { setUsuario, setPerfil, setEstaCarregando } = useAuthStore();
-  const { setEstaOnline } = useInterfaceStore();
-  const unsubPerfilRef = useRef<(() => void) | null>(null);
+  // Usamos SELECTORS específicos para evitar que o Provider rerenderize quando o estado muda.
+  // Isso quebra o loop: update store -> rerender provider -> re-run effect.
+  const setUsuario = useAuthStore(state => state.setUsuario);
+  const setPerfil = useAuthStore(state => state.setPerfil);
+  const setEstaCarregando = useAuthStore(state => state.setEstaCarregando);
+  const setEstaOnline = useInterfaceStore(state => state.setEstaOnline);
+  
+  // Refs para controle de estabilidade absoluta
+  const lastUid = useRef<string | null>(null);
+  const fetchedUids = useRef<Set<string>>(new Set());
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
-    // Monitoramento de conectividade
+    if (isInitialMount.current) {
+      console.log('[Auth] Provider montado');
+      isInitialMount.current = false;
+    }
+
     const handleOnline = () => setEstaOnline(true);
     const handleOffline = () => setEstaOnline(false);
 
@@ -34,63 +45,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    console.log('[Auth] Listener auth criado');
+
     const unsubscribeAuth = onAuthStateChanged(
       auth,
       async (user) => {
-        if (unsubPerfilRef.current) {
-          unsubPerfilRef.current();
-          unsubPerfilRef.current = null;
+        const uid = user?.uid || null;
+
+        // Guard 1: Se o UID não mudou, ignoramos o disparo (proteção contra instabilidade do Firebase)
+        if (uid === lastUid.current) {
+          return;
         }
 
+        console.log(`[Auth] Usuário autenticado: ${uid || 'Nenhum'}`);
+        lastUid.current = uid;
+        
         setUsuario(user);
 
         if (user) {
+          // Guard 2: Impedir busca repetida do mesmo perfil na mesma sessão/instância
+          if (fetchedUids.current.has(user.uid)) {
+            console.log('[Auth] Perfil ignorado (já carregado nesta sessão)');
+            setEstaCarregando(false);
+            return;
+          }
+
+          console.log('[Auth] Iniciando busca perfil');
           try {
             const docRef = doc(db, 'usuarios', user.uid);
             
-            // Tentativa resiliente de obter perfil inicial (do cache ou rede)
-            getDoc(docRef).then((snap) => {
-              if (snap.exists()) {
-                const dados = snap.data() as Usuario;
-                setPerfil(dados);
-                // Trigger de sync silencioso se os dados estiverem legados/incompletos
-                usuarioRepositorio.syncPerfilComAuth(user.uid, user, dados);
-              } else {
-                // Caso raro: Usuário autenticado mas sem doc no Firestore (ex: falha na criação inicial)
-                console.log('[Auth] Perfil não encontrado no Firestore, tentando criar agora...');
-                usuarioRepositorio.criarPerfilInicial(user).then((novoPerfil) => {
-                  setPerfil(novoPerfil);
-                });
-              }
-            }).catch(() => {
-              // Silencioso: Se falhar (offline), o onSnapshot abaixo assumirá
-            });
+            // Leitura ÚNICA para economizar quota
+            const snap = await getDoc(docRef);
 
-            // Listener em tempo real (background)
-            unsubPerfilRef.current = onSnapshot(
-              docRef,
-              (snap) => {
-                if (snap.exists()) {
-                  const dados = snap.data() as Usuario;
-                  setPerfil(dados);
-                }
-              },
-              (error) => {
-                // Warning apenas se não for erro de offline esperado
-                if (error.code !== 'unavailable') {
-                  console.warn('[Auth] Sync de perfil limitado:', error.message);
-                }
-              }
-            );
-          } catch (error) {
-            console.warn('[Auth] Erro ao iniciar sincronia de perfil.');
+            if (snap.exists()) {
+              const dados = snap.data() as Usuario;
+              console.log('[Auth] Perfil carregado');
+              
+              // Marcar como carregado ANTES do setPerfil para evitar race conditions
+              fetchedUids.current.add(user.uid);
+              setPerfil(dados);
+              
+              // Sincronização offline-first em background
+              usuarioRepositorio.syncPerfilComAuth(user.uid, user, dados);
+            } else {
+              console.log('[Auth] Perfil não encontrado, criando inicial...');
+              const novoPerfil = await usuarioRepositorio.criarPerfilInicial(user);
+              fetchedUids.current.add(user.uid);
+              setPerfil(novoPerfil);
+            }
+          } catch (error: any) {
+            if (error.code === 'resource-exhausted') {
+              console.error('[Auth] ERRO CRÍTICO: Quota do Firestore esgotada.');
+            } else {
+              console.warn('[Auth] Falha ao carregar perfil:', error.message);
+            }
           } finally {
-            // Crucial: Finaliza loading independente do Firestore
             setEstaCarregando(false);
           }
         } else {
+          console.log('[Auth] Sessão encerrada');
           setPerfil(null);
           setEstaCarregando(false);
+          fetchedUids.current.clear();
         }
       },
       (error) => {
@@ -100,11 +116,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     return () => {
+      console.log('[Auth] Cleanup auth');
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       unsubscribeAuth();
-      if (unsubPerfilRef.current) unsubPerfilRef.current();
     };
+    // Dependências estáveis (setters do Zustand) garantem que o useEffect rode apenas uma vez.
   }, [setUsuario, setPerfil, setEstaCarregando, setEstaOnline]);
 
   return <>{children}</>;

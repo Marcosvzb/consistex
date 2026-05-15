@@ -3,15 +3,31 @@
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useEstatisticas } from '@/ganchos/useEstatisticas';
 import { motion } from 'framer-motion';
+import { useEffect, useState, useMemo } from 'react';
 
 export function GraficoPerformance() {
   const { performanceDia } = useEstatisticas();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    console.log('[Chart] GraficoPerformance montado');
+  }, []);
   
   // O hook retorna ordenado por performance, precisamos voltar para ordem cronológica (D a S) para o gráfico
-  const data = [...performanceDia].sort((a, b) => a.diaSemana - b.diaSemana);
+  const data = useMemo(() => {
+    console.log('[Chart] Recalculando dados GraficoPerformance');
+    return [...performanceDia].sort((a, b) => a.diaSemana - b.diaSemana);
+  }, [performanceDia]);
   
   // Encontrar o valor máximo para dar destaque
-  const maxMedia = Math.max(...data.map(d => d.media));
+  const maxMedia = useMemo(() => Math.max(...data.map(d => d.media)), [data]);
+
+  if (!mounted) {
+    return (
+      <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm h-[280px] animate-pulse" />
+    );
+  }
 
   return (
     <motion.div 

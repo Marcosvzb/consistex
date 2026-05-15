@@ -12,26 +12,33 @@ export function useEstatisticas() {
   const { registros, habitos } = useHabitoStore();
   const { perfil } = useAuthStore();
 
-  const consistenciaMensal = useMemo(() => 
-    calcularConsistenciaMensal(registros), 
-  [registros]);
+  // Memoização granular para evitar recalculação se apenas um mudar
+  const consistenciaMensal = useMemo(() => {
+    console.log('[Stats] Recalculando consistenciaMensal');
+    return calcularConsistenciaMensal(registros);
+  }, [registros]);
 
-  const evolucaoSemanal = useMemo(() => 
-    calcularEvolucaoUltimos7Dias(registros), 
-  [registros]);
+  const evolucaoSemanal = useMemo(() => {
+    console.log('[Stats] Recalculando evolucaoSemanal');
+    return calcularEvolucaoUltimos7Dias(registros);
+  }, [registros]);
 
-  const rankingHabitos = useMemo(() => 
-    calcularRankingHabitos(habitos, registros), 
-  [habitos, registros]);
+  const rankingHabitos = useMemo(() => {
+    console.log('[Stats] Recalculando rankingHabitos');
+    return calcularRankingHabitos(habitos, registros);
+  }, [habitos, registros]);
 
-  const performanceDia = useMemo(() => 
-    calcularPerformancePorDiaSemana(registros), 
-  [registros]);
+  const performanceDia = useMemo(() => {
+    console.log('[Stats] Recalculando performanceDia');
+    return calcularPerformancePorDiaSemana(registros);
+  }, [registros]);
+
+  const totalHabitosAtivos = useMemo(() => {
+    return habitos.filter(h => h.status === 'active' || h.status === 'ativo').length;
+  }, [habitos]);
 
   const melhorStreak = perfil?.estatisticas?.melhorStreak || 0;
-  
-  // O Streak atual já é calculado no header ou pode ser pego do store/util, mas vamos simplificar aqui:
-  const streakAtual = perfil?.estatisticas?.streakAtual || 0; // Se o perfil manter atualizado. Na verdade o Consistex calcula no front, mas vamos assumir o utilitario
+  const streakAtual = perfil?.estatisticas?.streakAtual || 0;
 
   return {
     consistenciaMensal,
@@ -40,6 +47,6 @@ export function useEstatisticas() {
     performanceDia,
     melhorStreak,
     streakAtual,
-    totalHabitosAtivos: habitos.filter(h => h.status === 'ativo').length
+    totalHabitosAtivos
   };
 }

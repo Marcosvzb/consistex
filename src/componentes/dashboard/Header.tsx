@@ -12,15 +12,17 @@ import Link from 'next/link';
 import { useNotificacoes } from '@/ganchos/useNotificacoes';
 import Image from 'next/image';
 
+import { useMemo } from 'react';
+
 export function Header() {
   const { perfil, estaCarregando } = useAuthStore();
   const { registros } = useHabitoStore();
   const { dataAtual } = useInterfaceStore();
   const { naoLidasCount } = useNotificacoes();
   
-  const streakAtual = calcularStreak(registros);
+  const streakAtual = useMemo(() => calcularStreak(registros), [registros]);
   
-  const primeiroNome = obterPrimeiroNome(perfil?.nome);
+  const primeiroNome = useMemo(() => obterPrimeiroNome(perfil?.nome), [perfil?.nome]);
 
   return (
     <header className="sticky top-0 z-10 bg-slate-50/80 backdrop-blur-md pt-6 pb-4 mb-4 safe-top transition-colors">

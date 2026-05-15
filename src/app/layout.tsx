@@ -5,6 +5,7 @@ import { QueryProvider } from "@/provedores/QueryProvider";
 import { AuthProvider } from "@/provedores/AuthProvider";
 import { HydrationProvider } from "@/provedores/HydrationProvider";
 import { SplashScreen } from "@/componentes/ui/SplashScreen";
+import { SyncProvider } from "@/provedores/SyncProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -59,9 +60,11 @@ export default function RootLayout({
           <SplashScreen />
           <QueryProvider>
             <AuthProvider>
-              <main className="min-h-[100dvh] safe-top safe-bottom">
-                {children}
-              </main>
+              <SyncProvider>
+                <main className="min-h-[100dvh] safe-top safe-bottom">
+                  {children}
+                </main>
+              </SyncProvider>
             </AuthProvider>
           </QueryProvider>
         </HydrationProvider>

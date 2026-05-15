@@ -3,12 +3,28 @@
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, YAxis } from 'recharts';
 import { useEstatisticas } from '@/ganchos/useEstatisticas';
 import { motion } from 'framer-motion';
+import { useEffect, useState, useMemo } from 'react';
 
 export function GraficoEvolucao() {
   const { evolucaoSemanal } = useEstatisticas();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    console.log('[Chart] GraficoEvolucao montado');
+  }, []);
 
   // Inverter para mostrar da esquerda (mais antigo) para direita (mais recente)
-  const data = [...evolucaoSemanal].reverse();
+  const data = useMemo(() => {
+    console.log('[Chart] Recalculando dados GraficoEvolucao');
+    return [...evolucaoSemanal].reverse();
+  }, [evolucaoSemanal]);
+
+  if (!mounted) {
+    return (
+      <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm h-[312px] animate-pulse" />
+    );
+  }
 
   return (
     <motion.div 

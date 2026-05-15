@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { ShellMobile } from '@/componentes/layout/ShellMobile';
 import { useHabitos } from '@/ganchos/useHabitos';
 import { useGerenciarHabito } from '@/ganchos/useGerenciarHabito';
@@ -16,10 +16,32 @@ export default function HabitosPage() {
   const { habitosAtivos, habitosArquivados } = useHabitos();
   const { reordenarHabitos, reativarHabito, arquivarHabito } = useGerenciarHabito();
   
+  // Estado local para reordenação fluida e debounced sync
+  const [listaLocalAtivos, setListaLocalAtivos] = useState<Habito[]>([]);
+  const reorderTimeout = useRef<NodeJS.Timeout | null>(null);
+
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [habitoParaEditar, setHabitoParaEditar] = useState<Habito | null>(null);
   const [mostrarArquivados, setMostrarArquivados] = useState(false);
   const [busca, setBusca] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    setListaLocalAtivos(habitosAtivos);
+  }, [habitosAtivos]);
+
+  const handleReorder = (novosHabitos: Habito[]) => {
+    setListaLocalAtivos(novosHabitos);
+    
+    // Debounce de 1s para salvar no servidor, evitando estourar quota do Firestore
+    if (reorderTimeout.current) clearTimeout(reorderTimeout.current);
+    
+    reorderTimeout.current = setTimeout(() => {
+      console.log('[Sync] Sincronizando nova ordem de hábitos...');
+      reordenarHabitos(novosHabitos);
+    }, 1000);
+  };
 
   const filtrarBusca = (lista: Habito[]) => {
     if (!busca.trim()) return lista;
@@ -29,7 +51,7 @@ export default function HabitosPage() {
     );
   };
 
-  const ativosFiltrados = useMemo(() => filtrarBusca(habitosAtivos), [habitosAtivos, busca]);
+  const ativosFiltrados = useMemo(() => filtrarBusca(listaLocalAtivos), [listaLocalAtivos, busca]);
   const arquivadosFiltrados = useMemo(() => filtrarBusca(habitosArquivados), [habitosArquivados, busca]);
 
   const handleEdit = (habito: Habito) => {
@@ -41,6 +63,8 @@ export default function HabitosPage() {
     setHabitoParaEditar(null);
     setIsDrawerOpen(true);
   };
+
+  if (!mounted) return null;
 
   return (
     <ShellMobile>
@@ -88,7 +112,7 @@ export default function HabitosPage() {
             subtitulo="Crie seu primeiro hábito clicando no botão flutuante abaixo."
           />
         ) : (
-          <Reorder.Group axis="y" values={habitosAtivos} onReorder={reordenarHabitos} className="space-y-3">
+          <Reorder.Group axis="y" values={listaLocalAtivos} onReorder={handleReorder} className="space-y-3">
             {ativosFiltrados.map((habito) => (
               <Reorder.Item 
                 key={habito.id} 

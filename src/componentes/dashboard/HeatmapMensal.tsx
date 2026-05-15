@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { format, addMonths, subMonths, isToday, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -65,8 +65,17 @@ export function HeatmapMensal() {
   const [mesReferencia, setMesReferencia] = useState(new Date());
   const [diaSelecionado, setDiaSelecionado] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  const grade = useMemo(() => gerarGradeMensal(mesReferencia), [mesReferencia]);
+  useEffect(() => {
+    setMounted(true);
+    console.log('[Chart] HeatmapMensal montado');
+  }, []);
+
+  const grade = useMemo(() => {
+    console.log('[Chart] Gerando grade HeatmapMensal');
+    return gerarGradeMensal(mesReferencia);
+  }, [mesReferencia]);
 
   const navegarMes = useCallback((direcao: 'anterior' | 'proximo' | 'hoje') => {
     setIsNavigating(true);
@@ -101,6 +110,8 @@ export function HeatmapMensal() {
       streak
     };
   }, [diaSelecionado, registros, habitos.length]);
+
+  if (!mounted) return null;
 
   return (
     <section className="px-4 mb-12">

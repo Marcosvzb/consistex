@@ -1,4 +1,4 @@
-import { collection, doc, onSnapshot, query, setDoc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, setDoc, serverTimestamp, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/servicos/firebase';
 import { Habito, RegistroDiario } from '@/tipos/firebase';
 import { normalizarFrequencia } from '@/utilitarios/habitos';
@@ -8,7 +8,10 @@ export const dashboardRepositorio = {
    * Ouve as mudanças nos hábitos do usuário em tempo real
    */
   ouvirHabitos(uid: string, callback: (habitos: Habito[]) => void) {
-    const q = query(collection(db, 'usuarios', uid, 'habitos'));
+    const q = query(
+      collection(db, 'usuarios', uid, 'habitos'),
+      orderBy('ordem', 'asc')
+    );
     return onSnapshot(q, (snapshot) => {
       const habitos = snapshot.docs.map(doc => {
         const data = doc.data();
@@ -18,9 +21,8 @@ export const dashboardRepositorio = {
           frequencia: normalizarFrequencia(data.frequencia)
         };
       }) as Habito[];
-      // Mantém a ordenação padrão por ordem
-      const habitosOrdenados = [...habitos].sort((a, b) => a.ordem - b.ordem);
-      callback(habitosOrdenados);
+      
+      callback(habitos);
     }, (error) => {
       console.warn('[Firestore] Falha na sync de hábitos (offline mode ativado)', error);
     });
